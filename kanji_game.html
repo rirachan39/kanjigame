@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>かんじ れんしゅうゲーム</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Meiryo", sans-serif;
+    background: #f5f4ef;
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+  #app {
+    width: 100%;
+    max-width: 560px;
+    background: #fff;
+    border-radius: 20px;
+    padding: 1.8rem 1.5rem;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 4px;
+  }
+  .sub {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 1.2rem;
+  }
+  /* Grade / mode buttons */
+  .row-label {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 6px;
+    margin-top: 14px;
+  }
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .sel-btn {
+    flex: 1;
+    padding: 9px 6px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    border: 1.5px solid #ddd;
+    border-radius: 10px;
+    background: #fff;
+    color: #555;
+    transition: all .15s;
+  }
+  .sel-btn.active {
+    background: #e8f7f1;
+    border-color: #1D9E75;
+    color: #0f6e56;
+    font-weight: 700;
+  }
+  /* Progress */
+  .progress-wrap {
+    height: 8px;
+    background: #eee;
+    border-radius: 99px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: #1D9E75;
+    transition: width .35s ease;
+  }
+  /* Score bar */
+  .score-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 1.2rem;
+  }
+  .metric {
+    background: #f5f4ef;
+    border-radius: 12px;
+    padding: 10px 16px;
+    flex: 1;
+  }
+  .metric .ml { font-size: 11px; color: #888; }
+  .metric .mv { font-size: 22px; font-weight: 700; color: #1a1a1a; }
+  /* Question box */
+  .qbox {
+    background: #fff;
+    border: 1.5px solid #eee;
+    border-radius: 18px;
+    padding: 1.4rem 1.2rem;
+    margin-bottom: .8rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .kanji-big {
+    text-align: center;
+    font-size: 100px;
+    line-height: 1.1;
+    color: #1a1a1a;
+    margin-bottom: .6rem;
+    user-select: none;
+  }
+  .qtext {
+    font-size: 16px;
+    color: #333;
+    text-align: center;
+    margin-bottom: 1rem;
+    font-weight: 500;
+  }
+  .choices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .cbtn {
+    background: #fff;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    padding: 13px 8px;
+    font-size: 15px;
+    font-family: inherit;
+    cursor: pointer;
+    color: #333;
+    transition: background .12s, border-color .12s;
+    font-weight: 500;
+  }
+  .cbtn:hover { background: #f5f4ef; }
+  .cbtn.correct { background: #e8f7f1; border-color: #1D9E75; color: #0f6e56; }
+  .cbtn.wrong   { background: #fdecea; border-color: #e24b4a; color: #a32d2d; }
+  .cbtn.show-correct { background: #e8f7f1; border-color: #1D9E75; color: #0f6e56; }
+  /* Feedback */
+  .feedback {
+    text-align: center;
+    font-size: 15px;
+    min-height: 24px;
+    margin: 10px 0 6px;
+    font-weight: 500;
+  }
+  .hint-area {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 1rem;
+    line-height: 1.9;
+    background: #f9f9f7;
+    border-radius: 10px;
+    padding: .8rem 1rem;
+  }
+  /* Next / start button */
+  .main-btn {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    font-family: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    border-radius: 14px;
+    background: #1D9E75;
+    color: #fff;
+    transition: background .15s, transform .1s;
+  }
+  .main-btn:hover { background: #178a64; }
+  .main-btn:active { transform: scale(0.98); }
+  .sub-btn {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    font-size: 15px;
+    font-family: inherit;
+    cursor: pointer;
+    border: 1.5px solid #ddd;
+    border-radius: 14px;
+    background: #fff;
+    color: #555;
+    margin-top: 8px;
+    transition: background .12s;
+  }
+  .sub-btn:hover { background: #f5f4ef; }
+  /* 花丸 overlay */
+  #maru-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 10;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.6);
+  }
+  #maru-overlay.show { display: flex; }
+  @keyframes stamp {
+    0%   { transform: scale(2.8); opacity: 0; }
+    60%  { opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  /* Result */
+  .result-box { text-align: center; padding: 1.5rem .5rem; }
+  .result-big { font-size: 64px; margin-bottom: 10px; }
+  .result-score { font-size: 22px; font-weight: 700; color: #1a1a1a; margin-bottom: 6px; }
+  .result-comment { font-size: 15px; color: #666; margin-bottom: 1.8rem; }
+  /* Stars row in result */
+  .stars { font-size: 28px; letter-spacing: 4px; margin-bottom: 1rem; }
+
+  @media (max-width: 400px) {
+    .kanji-big { font-size: 80px; }
+    #maru-stamp { font-size: 100px; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const DB = {
+  g1:[
+    {k:"山",on:"サン",kun:"やま",strokes:3,order:["①まん中のたて線（上から下）","②左のはらい","③下のよこ線"],
+     q:[{type:"strokes",q:"「山」は何画？",c:["2画","3画","4画","5画"],a:1},{type:"on",q:"「山」の音読みは？",c:["サン","セン","シン","ソン"],a:0},{type:"kun",q:"「山」の訓読みは？",c:["かわ","き","やま","ひ"],a:2},{type:"order",q:"「山」の1画めはどれ？",c:["下のよこ線","左のはらい","まん中のたて線","右のはらい"],a:2}]},
+    {k:"川",on:"セン",kun:"かわ",strokes:3,order:["①左のたて線（少し曲げる）","②まん中のたて線","③右のたて線"],
+     q:[{type:"strokes",q:"「川」は何画？",c:["2画","3画","4画","5画"],a:1},{type:"on",q:"「川」の音読みは？",c:["サン","カン","セン","テン"],a:2},{type:"order",q:"「川」はどこから書き始める？",c:["右","まん中","左","上"],a:2}]},
+    {k:"木",on:"モク・ボク",kun:"き・こ",strokes:4,order:["①よこ線","②たて線（上から下）","③左はらい","④右はらい"],
+     q:[{type:"strokes",q:"「木」は何画？",c:["3画","4画","5画","6画"],a:1},{type:"on",q:"「木」の音読みは？",c:["ホン","モク","ニク","カク"],a:1},{type:"kun",q:"「木」の訓読みは？",c:["ひ","みず","き","つち"],a:2}]},
+    {k:"日",on:"ニチ・ジツ",kun:"ひ・か",strokes:4,order:["①左のたて線","②上のよこ線と右のたて線","③まん中のよこ線","④下のよこ線で閉じる"],
+     q:[{type:"strokes",q:"「日」は何画？",c:["3画","4画","5画","6画"],a:1},{type:"on",q:"「日」の音読みは？",c:["ニチ","ゲツ","スイ","モク"],a:0},{type:"order",q:"「日」の書き始めは？",c:["まん中のよこ線","左のたて線","右のたて線","下のよこ線"],a:1}]},
+    {k:"火",on:"カ",kun:"ひ",strokes:4,order:["①まん中の点","②たて線","③左はらい","④右はらい"],
+     q:[{type:"strokes",q:"「火」は何画？",c:["3画","4画","5画","6画"],a:1},{type:"on",q:"「火」の音読みは？",c:["ミズ","ツチ","カ","キン"],a:2},{type:"kun",q:"「火」の訓読みは？",c:["みず","ひ","つち","き"],a:1}]},
+    {k:"水",on:"スイ",kun:"みず",strokes:4,order:["①まん中のたて線","②左上の点","③左のはらい","④右はらい"],
+     q:[{type:"strokes",q:"「水」は何画？",c:["3画","4画","5画","6画"],a:1},{type:"on",q:"「水」の音読みは？",c:["カ","モク","スイ","キン"],a:2},{type:"order",q:"「水」の1画めは？",c:["左の点","右はらい","まん中のたて線","左はらい"],a:2}]},
+    {k:"人",on:"ジン・ニン",kun:"ひと",strokes:2,order:["①左はらい（ノ）","②右のはらい"],
+     q:[{type:"strokes",q:"「人」は何画？",c:["1画","2画","3画","4画"],a:1},{type:"on",q:"「人」の音読みは？",c:["ジン","テン","チ","カ"],a:0},{type:"kun",q:"「人」の訓読みは？",c:["き","ひと","やま","かわ"],a:1}]},
+    {k:"一",on:"イチ・イツ",kun:"ひと-つ",strokes:1,order:["①左から右によこ線"],
+     q:[{type:"strokes",q:"「一」は何画？",c:["1画","2画","3画","4画"],a:0},{type:"on",q:"「一」の音読みは？",c:["ニ","サン","イチ","シ"],a:2}]},
+    {k:"月",on:"ゲツ・ガツ",kun:"つき",strokes:4,order:["①左のたて線","②右のたて線と上のよこ線","③まん中のよこ線","④下のよこ線で閉じる"],
+     q:[{type:"strokes",q:"「月」は何画？",c:["3画","4画","5画","6画"],a:1},{type:"on",q:"「月」の音読みは？",c:["ニチ","ゲツ","スイ","モク"],a:1},{type:"kun",q:"「月」の訓読みは？",c:["ひ","つき","ほし","そら"],a:1}]},
+    {k:"土",on:"ド・ト",kun:"つち",strokes:3,order:["①上のよこ線","②たて線","③下のよこ線（長く）"],
+     q:[{type:"strokes",q:"「土」は何画？",c:["2画","3画","4画","5画"],a:1},{type:"on",q:"「土」の音読みは？",c:["カ","スイ","ド","キン"],a:2},{type:"kun",q:"「土」の訓読みは？",c:["いし","みず","つち","き"],a:2}]},
+  ],
+  g2:[
+    {k:"春",on:"シュン",kun:"はる",strokes:9,order:["①～③三本のよこ線","④⑤⑥三本のたて線","⑦長いよこ線","⑧⑨下の「日」"],
+     q:[{type:"strokes",q:"「春」は何画？",c:["7画","8画","9画","10画"],a:2},{type:"on",q:"「春」の音読みは？",c:["ナツ","アキ","フユ","シュン"],a:3},{type:"kun",q:"「春」の訓読みは？",c:["なつ","あき","はる","ふゆ"],a:2}]},
+    {k:"海",on:"カイ",kun:"うみ",strokes:9,order:["①さんずい（3画）","②よこ線3本","③たて線3本"],
+     q:[{type:"strokes",q:"「海」は何画？",c:["8画","9画","10画","11画"],a:1},{type:"on",q:"「海」の音読みは？",c:["カイ","リク","ヤマ","コク"],a:0},{type:"kun",q:"「海」の訓読みは？",c:["そら","うみ","かわ","みず"],a:1}]},
+    {k:"星",on:"セイ・ショウ",kun:"ほし",strokes:9,order:["①②③よこ線3本","④たて線","⑤～⑨下の「日」"],
+     q:[{type:"strokes",q:"「星」は何画？",c:["8画","9画","10画","11画"],a:1},{type:"on",q:"「星」の音読みは？",c:["ツキ","タイヨウ","セイ","ヒ"],a:2},{type:"kun",q:"「星」の訓読みは？",c:["つき","ほし","ひ","そら"],a:1}]},
+    {k:"雨",on:"ウ",kun:"あめ・あま",strokes:8,order:["①上のよこ線","②左のたて線","③右のたて線","④まん中のよこ線","⑤⑥⑦三つの点","⑧下のよこ線"],
+     q:[{type:"strokes",q:"「雨」は何画？",c:["6画","7画","8画","9画"],a:2},{type:"on",q:"「雨」の音読みは？",c:["ウ","カ","スイ","テン"],a:0},{type:"order",q:"「雨」で最初に書くのは？",c:["左のたて線","三つの点","右のたて線","上のよこ線"],a:3}]},
+    {k:"風",on:"フウ・フ",kun:"かぜ・かざ",strokes:9,order:["①外わく（上・左・右）","②ノ","③横棒","④虫の部分（5画）"],
+     q:[{type:"strokes",q:"「風」は何画？",c:["8画","9画","10画","11画"],a:1},{type:"on",q:"「風」の音読みは？",c:["ウ","フウ","スイ","テン"],a:1},{type:"kun",q:"「風」の訓読みは？",c:["かみなり","あめ","かぜ","ゆき"],a:2}]},
+    {k:"南",on:"ナン・ナ",kun:"みなみ",strokes:9,order:["①上のよこ線","②たて線","③左のはらい","④④内部のよこ線","⑤⑥⑦⑧⑨内部の縦横"],
+     q:[{type:"strokes",q:"「南」は何画？",c:["8画","9画","10画","11画"],a:1},{type:"on",q:"「南」の音読みは？",c:["ホク","トウ","ナン","セイ"],a:2},{type:"kun",q:"「南」の訓読みは？",c:["ひがし","にし","きた","みなみ"],a:3}]},
+  ],
+  g3:[
+    {k:"太",on:"タイ・ダイ",kun:"ふと-い",strokes:4,order:["①よこ線","②たて線","③左はらい","④右はらい（点）"],
+     q:[{type:"strokes",q:"「太」は何画？",c:["3画","4画","5画","6画"],a:1},{type:"on",q:"「太」の音読みは？",c:["ショウ","チュウ","タイ","ダン"],a:2},{type:"kun",q:"「太」の訓読みは？",c:["ほそい","ふとい","おおきい","ちいさい"],a:1}]},
+    {k:"空",on:"クウ",kun:"そら・から・あ-く",strokes:8,order:["①～⑤「穴」の部分","⑥よこ線","⑦⑧下のはらい"],
+     q:[{type:"strokes",q:"「空」は何画？",c:["7画","8画","9画","10画"],a:1},{type:"on",q:"「空」の音読みは？",c:["チ","テン","クウ","ウミ"],a:2},{type:"kun",q:"「空」の訓読みは？",c:["うみ","そら","やま","かわ"],a:1}]},
+    {k:"花",on:"カ",kun:"はな",strokes:7,order:["①②③くさかんむり（3画）","④ノ","⑤たて線","⑥左はらい","⑦右はらい"],
+     q:[{type:"strokes",q:"「花」は何画？",c:["6画","7画","8画","9画"],a:1},{type:"on",q:"「花」の音読みは？",c:["ハナ","カ","サクラ","ミ"],a:1},{type:"kun",q:"「花」の訓読みは？",c:["き","くさ","はな","み"],a:2}]},
+    {k:"森",on:"シン",kun:"もり",strokes:12,order:["①～④一本目の「木」","⑤～⑧二本目の「木」","⑨～⑫三本目の「木」"],
+     q:[{type:"strokes",q:"「森」は何画？",c:["10画","11画","12画","13画"],a:2},{type:"on",q:"「森」の音読みは？",c:["リン","モク","シン","ジュ"],a:2},{type:"kun",q:"「森」の訓読みは？",c:["き","はやし","もり","たけ"],a:2}]},
+    {k:"池",on:"チ",kun:"いけ",strokes:6,order:["①②③さんずい","④ノ","⑤曲がり","⑥よこ線"],
+     q:[{type:"strokes",q:"「池」は何画？",c:["5画","6画","7画","8画"],a:1},{type:"on",q:"「池」の音読みは？",c:["スイ","ウミ","チ","コ"],a:2},{type:"kun",q:"「池」の訓読みは？",c:["うみ","かわ","いけ","みず"],a:2}]},
+    {k:"島",on:"トウ",kun:"しま",strokes:10,order:["①～③上の「鳥」の上部","④～⑦「鳥」の中部","⑧⑨⑩下の「山」"],
+     q:[{type:"strokes",q:"「島」は何画？",c:["9画","10画","11画","12画"],a:1},{type:"on",q:"「島」の音読みは？",c:["コク","リク","トウ","ハン"],a:2},{type:"kun",q:"「島」の訓読みは？",c:["うみ","しま","みさき","いわ"],a:1}]},
+  ],
+  g4:[
+    {k:"夢",on:"ム",kun:"ゆめ",strokes:13,order:["①～⑤上の「罒」","⑥よこ線","⑦～⑩「夕」の部分","⑪～⑬下のはらい"],
+     q:[{type:"strokes",q:"「夢」は何画？",c:["11画","12画","13画","14画"],a:2},{type:"on",q:"「夢」の音読みは？",c:["ムゲン","ム","キボウ","ソウ"],a:1},{type:"kun",q:"「夢」の訓読みは？",c:["のぞみ","ゆめ","おもい","ちから"],a:1}]},
+    {k:"勉",on:"ベン",kun:"つと-める",strokes:10,order:["①～⑧「免」の部分","⑨⑩右の「力」"],
+     q:[{type:"strokes",q:"「勉」は何画？",c:["9画","10画","11画","12画"],a:1},{type:"on",q:"「勉」の音読みは？",c:["ガク","シュウ","ベン","キョウ"],a:2},{type:"kun",q:"「勉」の訓読みは？",c:["まなぶ","つとめる","よむ","かく"],a:1}]},
+    {k:"愛",on:"アイ",kun:"いと-しい・まな",strokes:13,order:["①～④上の「爫」","⑤⑥「冖」","⑦～⑩「心」","⑪～⑬「夂」"],
+     q:[{type:"strokes",q:"「愛」は何画？",c:["11画","12画","13画","14画"],a:2},{type:"on",q:"「愛」の音読みは？",c:["キ","アイ","ジョウ","コウ"],a:1},{type:"kun",q:"「愛」の訓読みは？",c:["うつくしい","きらい","いとしい","たのしい"],a:2}]},
+    {k:"希",on:"キ",kun:"まれ",strokes:7,order:["①よこ線","②ノ","③たて線","④よこ線2本","⑤⑥⑦「巾」"],
+     q:[{type:"strokes",q:"「希」は何画？",c:["6画","7画","8画","9画"],a:1},{type:"on",q:"「希」の音読みは？",c:["ボウ","キ","ガン","ネン"],a:1},{type:"kun",q:"「希」の訓読みは？",c:["おおい","すくない","まれ","ふつう"],a:2}]},
+    {k:"笑",on:"ショウ",kun:"わら-う・え-む",strokes:10,order:["①②③くさかんむり","④⑤⑥⑦「夭」上部","⑧⑨⑩「夭」下部"],
+     q:[{type:"strokes",q:"「笑」は何画？",c:["9画","10画","11画","12画"],a:1},{type:"on",q:"「笑」の音読みは？",c:["ナキ","ショウ","ドウ","カン"],a:1},{type:"kun",q:"「笑」の訓読みは？",c:["なく","いかる","わらう","よろこぶ"],a:2}]},
+  ]
+};
+
+const gradeLabel={g1:'1年生',g2:'2年生',g3:'3年生',g4:'4年生'};
+const modeLabel={strokes:'書き順',reading:'読み方',all:'ぜんぶ'};
+let mode='strokes', grade='g1', questions=[], current=0, score=0, answered=false;
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}
+  return arr;
+}
+
+function playCorrect(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    [[523.25,0],[659.25,0.12],[783.99,0.24],[1046.5,0.38]].forEach(([freq,t])=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.type='sine';o.frequency.value=freq;
+      g.gain.setValueAtTime(0,ctx.currentTime+t);
+      g.gain.linearRampToValueAtTime(0.28,ctx.currentTime+t+0.04);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.3);
+      o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.32);
+    });
+  }catch(e){}
+}
+
+function playWrong(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.type='sawtooth';o.frequency.value=160;
+    g.gain.setValueAtTime(0.22,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.38);
+    o.start(ctx.currentTime);o.stop(ctx.currentTime+0.38);
+  }catch(e){}
+}
+
+function showMaru(){
+  const ov=document.getElementById('maru-overlay');
+  if(!ov)return;
+  const svg=document.getElementById('maru-svg');
+  if(!svg)return;
+  const ns='http://www.w3.org/2000/svg';
+  svg.innerHTML='';
+  const cx=150,cy=150,r=118;
+  const sakura='🌸';
+  const count=14;
+  for(let i=0;i<count;i++){
+    const angle=(2*Math.PI/count)*i - Math.PI/2;
+    const x=cx+r*Math.cos(angle);
+    const y=cy+r*Math.sin(angle);
+    const t=document.createElementNS(ns,'text');
+    t.setAttribute('x',x);
+    t.setAttribute('y',y);
+    t.setAttribute('text-anchor','middle');
+    t.setAttribute('dominant-baseline','middle');
+    t.setAttribute('font-size','26');
+    t.textContent=sakura;
+    svg.appendChild(t);
+  }
+  // center text line 1
+  const t1=document.createElementNS(ns,'text');
+  t1.setAttribute('x','150');t1.setAttribute('y','132');
+  t1.setAttribute('text-anchor','middle');t1.setAttribute('dominant-baseline','middle');
+  t1.setAttribute('font-size','28');t1.setAttribute('font-weight','900');
+  t1.setAttribute('fill','#e8233a');
+  t1.setAttribute('font-family','Hiragino Kaku Gothic ProN,Meiryo,sans-serif');
+  t1.textContent='大変よく';
+  svg.appendChild(t1);
+  const t2=document.createElementNS(ns,'text');
+  t2.setAttribute('x','150');t2.setAttribute('y','168');
+  t2.setAttribute('text-anchor','middle');t2.setAttribute('dominant-baseline','middle');
+  t2.setAttribute('font-size','28');t2.setAttribute('font-weight','900');
+  t2.setAttribute('fill','#e8233a');
+  t2.setAttribute('font-family','Hiragino Kaku Gothic ProN,Meiryo,sans-serif');
+  t2.textContent='できました';
+  svg.appendChild(t2);
+  ov.classList.remove('show');
+  void ov.offsetWidth;
+  ov.classList.add('show');
+}
+
+function buildQuestions(){
+  const pool=DB[grade]; let qs=[];
+  pool.forEach(item=>{
+    let matched=item.q;
+    if(mode==='strokes') matched=item.q.filter(q=>q.type==='strokes'||q.type==='order');
+    else if(mode==='reading') matched=item.q.filter(q=>q.type==='on'||q.type==='kun');
+    matched.forEach(q=>qs.push({...q,kanji:item.k,order:item.order,on:item.on,kun:item.kun}));
+  });
+  shuffle(qs);
+  questions=qs.slice(0,12);
+  current=0; score=0; answered=false;
+}
+
+function render(){
+  const app=document.getElementById('app');
+
+  if(questions.length===0){
+    app.innerHTML=`
+      <h1>かんじ れんしゅうゲーム</h1>
+      <p class="sub">学年とモードをえらんでね！</p>
+      <div class="row-label">学年</div>
+      <div class="btn-row">${['g1','g2','g3','g4'].map(g=>`<button class="sel-btn ${grade===g?'active':''}" onclick="setGrade('${g}')">${gradeLabel[g]}</button>`).join('')}</div>
+      <div class="row-label">もんだいのしゅるい</div>
+      <div class="btn-row">${['strokes','reading','all'].map(m=>`<button class="sel-btn ${mode===m?'active':''}" onclick="setMode('${m}')">${modeLabel[m]}</button>`).join('')}</div>
+      <br>
+      <button class="main-btn" onclick="startGame()">ゲームスタート！</button>`;
+    return;
+  }
+
+  if(current>=questions.length){
+    const pct=Math.round(score/questions.length*100);
+    const face=pct===100?'💮':pct>=75?'🌟':pct>=50?'😊':'💪';
+    const msg=pct===100?'かんぺき！すごいね！':pct>=75?'よくできました！':pct>=50?'もう少しでかんぺき！':'もう一度れんしゅうしよう！';
+    const stars='⭐'.repeat(Math.round(pct/100*5));
+    app.innerHTML=`
+      <h1>かんじ れんしゅうゲーム</h1>
+      <div class="result-box">
+        <div class="result-big">${face}</div>
+        <div class="stars">${stars}</div>
+        <div class="result-score">${score} / ${questions.length} もんせいかい！</div>
+        <div class="result-comment">${msg}<br><span style="font-size:12px;color:#aaa">${gradeLabel[grade]} ・ ${modeLabel[mode]}モード</span></div>
+        <button class="main-btn" onclick="startGame()">もういちど！</button>
+        <button class="sub-btn" onclick="backMenu()">メニューにもどる</button>
+      </div>`;
+    return;
+  }
+
+  const q=questions[current];
+  const pct=Math.round(current/questions.length*100);
+  app.innerHTML=`
+    <h1>かんじ れんしゅうゲーム</h1>
+    <p class="sub">${gradeLabel[grade]} ・ ${modeLabel[mode]}モード</p>
+    <div class="progress-wrap"><div class="progress-fill" style="width:${pct}%"></div></div>
+    <div class="score-bar">
+      <div class="metric"><div class="ml">もんだい</div><div class="mv">${current+1} / ${questions.length}</div></div>
+      <div class="metric"><div class="ml">せいかい</div><div class="mv" id="sv">${score}</div></div>
+    </div>
+    <div class="qbox" id="qbox">
+      <div id="maru-overlay"><svg id="maru-svg" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg" style="width:min(75vw,280px);height:min(75vw,280px);animation:stamp .45s cubic-bezier(.2,1.6,.4,1) forwards"></svg></div>
+      <div class="kanji-big">${q.kanji}</div>
+      <div class="qtext">${q.q}</div>
+      <div class="choices" id="choices">${q.c.map((c,i)=>`<button class="cbtn" id="cb${i}" onclick="pick(${i})">${c}</button>`).join('')}</div>
+    </div>
+    <div class="feedback" id="fb"></div>
+    <div id="hint"></div>
+    <button class="main-btn" id="nb" style="display:none" onclick="nextQ()">つぎのもんだい →</button>`;
+}
+
+function pick(i){
+  if(answered)return;
+  answered=true;
+  const q=questions[current];
+  document.querySelectorAll('.cbtn').forEach(b=>b.style.cursor='default');
+  const fb=document.getElementById('fb');
+  const hint=document.getElementById('hint');
+  if(i===q.a){
+    score++;
+    document.getElementById('sv').textContent=score;
+    document.getElementById('cb'+i).classList.add('correct');
+    fb.innerHTML='<span style="color:#0f6e56;font-size:16px">大変よくできました。✨</span>';
+    playCorrect();
+    showMaru();
+  } else {
+    document.getElementById('cb'+i).classList.add('wrong');
+    document.getElementById('cb'+q.a).classList.add('show-correct');
+    fb.innerHTML='<span style="color:#a32d2d">ざんねん！こたえは「'+q.c[q.a]+'」だよ。</span>';
+    playWrong();
+  }
+  hint.innerHTML=`<div class="hint-area"><b>かきじゅん：</b><br>${q.order.join('<br>')}<br><span style="color:#999">音読み：${q.on}　訓読み：${q.kun}</span></div>`;
+  document.getElementById('nb').style.display='block';
+}
+
+function nextQ(){ current++; answered=false; render(); }
+function setGrade(g){ grade=g; questions=[]; render(); }
+function setMode(m){ mode=m; questions=[]; render(); }
+function startGame(){ buildQuestions(); render(); }
+function backMenu(){ questions=[]; render(); }
+
+render();
+</script>
+</body>
+</html>
